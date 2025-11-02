@@ -2,6 +2,10 @@
 
 Notlar, yapılacaklar ve hatırlatmalarınız için AI destekli kişisel asistan web uygulaması.
 
+## Repository
+
+Bu projenin kaynak kodu: [https://github.com/incesuali/asistan.git](https://github.com/incesuali/asistan.git)
+
 ## Özellikler
 
 - 📝 **4 Panelli Arayüz**: Notlar, Yapılacaklar, Hatırlatmalar ve ek panel
