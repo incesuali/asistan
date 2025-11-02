@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kişisel Asistan
 
-## Getting Started
+Notlar, yapılacaklar ve hatırlatmalarınız için AI destekli kişisel asistan web uygulaması.
 
-First, run the development server:
+## Özellikler
+
+- 📝 **4 Panelli Arayüz**: Notlar, Yapılacaklar, Hatırlatmalar ve ek panel
+- 🤖 **AI Sohbet**: Groq AI ile Türkçe konuşma desteği
+- 🎨 **Minimalist Tasarım**: Temiz, beyaz tema, küçük fontlar
+- 💬 **Akıllı Popup**: Ekranın ortasında açılan chat modal'ı
+- ⚡ **Hızlı**: Groq'un hızlı API'si sayesinde düşük gecikme
+- 🔔 **Akıllı Hatırlatma Sistemi**: Zamanlanmış hatırlatmalar ve otomatik popup bildirimleri
+
+## Kurulum
+
+### 1. Bağımlılıkları Yükleyin
+
+```bash
+npm install
+```
+
+### 2. Groq API Anahtarını Alın
+
+1. [Groq Console](https://console.groq.com/) 'a gidin
+2. Hesap oluşturun/giriş yapın
+3. API Key oluşturun
+
+### 3. Çevre Değişkenlerini Ayarlayın
+
+`.env.local` dosyasını düzenleyin:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 4. Geliştirme Sunucusunu Başlatın
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tarayıcıda [http://localhost:3000](http://localhost:3000) adresini açın.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Teknolojiler
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js 16**: React framework
+- **TypeScript**: Tip güvenliği
+- **Tailwind CSS**: Modern CSS framework
+- **Groq AI**: Hızlı LLM API
+- **Zod**: Validasyon
 
-## Learn More
+## Kullanım
 
-To learn more about Next.js, take a look at the following resources:
+### Chat Modal'ı Açma
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sağ alt köşedeki chat ikonuna tıklayarak AI asistanıyla konuşabilirsiniz.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Özellikler
 
-## Deploy on Vercel
+- **Notlar**: Ekleme, görüntüleme ve silme
+- **Yapılacaklar**: Liste oluşturma ve takip
+- **Hatırlatmalar**: Zamanlanmış hatırlatma sistemi
+- **AI Sohbet**: Doğal dilde iletişim
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Hatırlatma Sistemi
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Hatırlatma sistemi şu özelliklere sahiptir:
+
+#### Nasıl Çalışır?
+1. **Hatırlatma Ekleme**: 
+   - Hatırlatmalar panelinde "Ekle" butonuna tıklayın
+   - Hatırlatma metnini yazın
+   - Tarih ve saat seçin (datetime picker)
+   - "Kaydet" ile kaydedin
+
+2. **Otomatik Popup**:
+   - Hatırlatma zamanından **24 saat önce** popup açılmaya başlar
+   - Browser açıksa anında kontrol edilir
+   - Browser kapalıysa, açıldığında hemen kontrol edilir
+   - Her 10 saniyede bir otomatik kontrol yapılır
+
+3. **Popup Davranışı**:
+   - Popup sadece "Tamam" butonu ile kapanır (dışına tıklayınca kapanmaz)
+   - "Tamam" butonuna basınca hatırlatma `completed: true` olur
+   - Tamamlanan hatırlatmalar listede gri renkte ve ✓ işaretiyle gösterilir
+   - Tamamlanan hatırlatmalar için popup bir daha açılmaz
+
+4. **Hatırlatma Listesi**:
+   - Tüm hatırlatmalar (tamamlanmış olsun olmasın) listede görünür
+   - Tamamlanmamış hatırlatmalar normal renkte
+   - Tamamlanmış hatırlatmalar gri renkte ve ✓ işaretiyle
+   - Hatırlatmalar sadece × butonu ile tamamen silinir
+
+#### Teknik Detaylar
+- **Veri Saklama**: LocalStorage (tarayıcıda saklanır)
+- **Zaman Kontrolü**: Client-side, her 10 saniyede bir
+- **State Yönetimi**: React useState ve useRef
+- **Timezone**: Local timezone kullanılır (datetime-local input)
+
+#### Örnek Senaryo
+1. Kullanıcı "Yarın saat 15:00 toplantı" hatırlatması ekler
+2. Sistem bugün saat 15:00'dan itibaren popup göstermeye başlar
+3. Browser açıldığında veya 10 saniye aralıklarla kontrol edilir
+4. Popup açılır: "🔔 HATIRLATMA - Yarın saat 15:00 toplantı"
+5. Kullanıcı "Tamam" butonuna basar
+6. Hatırlatma listede gri renkte görünür, popup bir daha açılmaz
+
+## Gelecek Özellikler
+
+- Veritabanı entegrasyonu (PostgreSQL)
+- Kullanıcı kimlik doğrulama
+- Gelişmiş AI komutları
+- Browser Notification API entegrasyonu (tarayıcı kapalıyken de bildirim)
+- PWA desteği (uygulama gibi yükleme)
+
+## Lisans
+
+MIT
