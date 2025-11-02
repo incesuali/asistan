@@ -201,16 +201,20 @@ export default function Home() {
 
   const deleteNote = (id: string, type: 'notes' | 'todos' | 'reminders') => {
     const storageKey = type;
-    const updated = type === 'notes' 
-      ? notes.filter(n => n.id !== id)
-      : type === 'todos'
-      ? todos.filter(n => n.id !== id)
-      : reminders.filter(n => n.id !== id);
-    
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    if (type === 'notes') setNotes(updated);
-    else if (type === 'todos') setTodos(updated);
-    else setReminders(updated);
+    if (type === 'notes') {
+      const updated = notes.filter(n => n.id !== id);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      setNotes(updated);
+    } else if (type === 'todos') {
+      const updated = todos.filter(n => n.id !== id);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      setTodos(updated);
+    } else {
+      const updated = reminders.filter(n => n.id !== id);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      setReminders(updated);
+    }
+    window.dispatchEvent(new Event('storage'));
   };
 
   const saveNote = () => {
