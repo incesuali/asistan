@@ -20,7 +20,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id, planId, fileName: file.name, fileUrl: blob.url, createdAt: new Date().toISOString() });
   } catch (e:any) {
-    return NextResponse.json({ error: 'Yükleme başarısız' }, { status: 500 });
+    console.error('Upload error:', e);
+    return NextResponse.json({ error: `Yükleme başarısız: ${e?.message || 'Bilinmeyen hata'}` }, { status: 500 });
   }
 }
 
