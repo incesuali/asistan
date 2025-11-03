@@ -10,6 +10,14 @@ interface Note {
   createdAt: string;
 }
 
+interface Todo {
+  id: string;
+  content: string;
+  createdAt: string;
+  dueAt?: string | null;
+  completed?: boolean;
+}
+
 interface Reminder {
   id: string;
   content: string;
@@ -20,7 +28,7 @@ interface Reminder {
 
 export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [todos, setTodos] = useState<Note[]>([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [currentDate, setCurrentDate] = useState<string>('');
   const [notesModalOpen, setNotesModalOpen] = useState(false);
@@ -28,6 +36,7 @@ export default function Home() {
   const [remindersModalOpen, setRemindersModalOpen] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [todosInput, setTodosInput] = useState('');
+  const [todosDueHoursInput, setTodosDueHoursInput] = useState('');
   const [remindersInput, setRemindersInput] = useState('');
   const [reminderDateTimeInput, setReminderDateTimeInput] = useState('');
   const [activeReminderPopup, setActiveReminderPopup] = useState<Reminder | null>(null);
@@ -67,6 +76,45 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Yapılacak süresi dolanlar için popup kontrolü
+  const [activeTodoPopup, setActiveTodoPopup] = useState<Todo | null>(null);
+  const activeTodoPopupRef = useRef<Todo | null>(null);
+
+  const checkTodosDue = async () => {
+    try {
+      const res = await fetch('/api/todos');
+      if (!res.ok) return;
+      const data = await res.json();
+      const currentTodos: Todo[] = data.map((t: any) => ({
+        id: t.id,
+        content: t.content,
+        createdAt: t.createdAt || t.created_at,
+        dueAt: t.dueAt || t.due_at || null,
+        completed: t.completed ?? false,
+      }));
+
+      if (activeTodoPopupRef.current) return;
+
+      const now = new Date().getTime();
+      for (const todo of currentTodos) {
+        if (!todo.completed && todo.dueAt) {
+          const due = new Date(todo.dueAt).getTime();
+          if (now >= due) {
+            setActiveTodoPopup(todo);
+            activeTodoPopupRef.current = todo;
+            break;
+          }
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    checkTodosDue();
+    const it = setInterval(checkTodosDue, 10000);
+    return () => clearInterval(it);
+  }, [todos]);
 
   useEffect(() => {
     // API'den verileri yükle ve LocalStorage'dan migrate et
@@ -153,7 +201,9 @@ export default function Home() {
           setTodos(todosData.map((t: any) => ({
             id: t.id,
             content: t.content,
-            createdAt: t.created_at || t.createdAt,
+            createdAt: t.createdAt || t.created_at,
+            dueAt: t.dueAt || t.due_at || null,
+            completed: t.completed ?? false,
           })));
         }
 
@@ -328,14 +378,16 @@ export default function Home() {
       const res = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: todosInput.trim() }),
+        body: JSON.stringify({ content: todosInput.trim(), dueInHours: todosDueHoursInput ? Number(todosDueHoursInput) : null }),
       });
       
       if (res.ok) {
         const newTodo = await res.json();
         setTodos([...todos, { ...newTodo, createdAt: new Date().toISOString() }]);
         setTodosInput('');
+        setTodosDueHoursInput('');
         setTodosModalOpen(false);
+        setTimeout(() => { checkTodosDue(); }, 200);
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error('Save todo failed:', res.status, errorData);
@@ -593,8 +645,14 @@ export default function Home() {
               <div className="text-xs text-gray-400 italic">Henüz yapılacak yok</div>
             ) : (
               todos.map((todo) => (
-                <div key={todo.id} className="text-xs text-gray-700 leading-normal whitespace-pre-wrap group py-0.5">
+                <div key={todo.id} className={`text-xs leading-normal whitespace-pre-wrap group py-0.5 ${todo.completed ? 'text-red-600' : 'text-green-700'}`}>
                   {todo.content}
+                  {todo.dueAt && (
+                    <span className="ml-2 text-[10px] text-gray-400">
+                      {new Date(todo.dueAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {todo.completed && ' ✓'}
+                    </span>
+                  )}
                   <button
                     onClick={() => startEditTodo(todo)}
                     className="ml-2 text-[10px] text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -753,11 +811,25 @@ export default function Home() {
               rows={4}
               autoFocus
             />
+            <div className="mb-3">
+              <label className="block text-[11px] text-gray-600 mb-1">Kaç saat sonra hatırlatılsın? (opsiyonel)</label>
+              <select
+                value={todosDueHoursInput}
+                onChange={(e) => setTodosDueHoursInput(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+              >
+                <option value="">Seçiniz</option>
+                {Array.from({ length: 24 }, (_, i) => i + 1).map(h => (
+                  <option key={h} value={h}>{h} saat sonra</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => {
                   setTodosModalOpen(false);
                   setTodosInput('');
+                  setTodosDueHoursInput('');
                 }}
                 className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-800 transition-colors"
               >
@@ -1004,6 +1076,38 @@ export default function Home() {
             </div>
             <button
               onClick={() => completeReminder(activeReminderPopup.id)}
+              className="w-full bg-gray-900 text-white px-4 py-2 rounded text-xs hover:bg-gray-800 transition-colors"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      )}
+      {activeTodoPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9V9h2v4zm0-6H9V5h2v2z" />
+              </svg>
+              <h3 className="text-sm font-semibold text-gray-800 uppercase">YAPILACAK</h3>
+            </div>
+            <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
+              {activeTodoPopup.content}
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await fetch('/api/todos', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeTodoPopup.id, completed: true }),
+                  });
+                  setTodos(todos.map(t => t.id === activeTodoPopup.id ? { ...t, completed: true } : t));
+                } catch {}
+                setActiveTodoPopup(null);
+                activeTodoPopupRef.current = null;
+              }}
               className="w-full bg-gray-900 text-white px-4 py-2 rounded text-xs hover:bg-gray-800 transition-colors"
             >
               Tamam

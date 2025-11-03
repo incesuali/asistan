@@ -42,6 +42,10 @@ export async function initDatabase() {
       )
     `;
 
+    // Yeni alanlar: due_at ve completed
+    await sql`ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_at TIMESTAMP NULL`;
+    await sql`ALTER TABLE todos ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`;
+
     await sql`
       CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY,

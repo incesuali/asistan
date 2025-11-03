@@ -5,7 +5,7 @@ import { sql, initDatabase } from '@/lib/db';
 export async function GET() {
   try {
     await initDatabase();
-    const result = await sql`SELECT * FROM todos ORDER BY created_at DESC`;
+    const result = await sql`SELECT id, content, created_at as "createdAt", due_at as "dueAt", completed FROM todos ORDER BY created_at DESC`;
     return NextResponse.json(result.rows);
   } catch (error: any) {
     console.error('Todos GET error:', error);
@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await initDatabase();
-    const { content } = await request.json();
+    const { content, dueInHours } = await request.json();
     
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -30,12 +30,14 @@ export async function POST(request: Request) {
     }
 
     const id = Date.now().toString();
+    const hours = Number(dueInHours);
+    const dueAt = !isNaN(hours) && hours > 0 ? new Date(Date.now() + hours * 3600 * 1000).toISOString() : null;
     await sql`
-      INSERT INTO todos (id, content)
-      VALUES (${id}, ${content.trim()})
+      INSERT INTO todos (id, content, due_at, completed)
+      VALUES (${id}, ${content.trim()}, ${dueAt}, false)
     `;
 
-    return NextResponse.json({ id, content: content.trim() });
+    return NextResponse.json({ id, content: content.trim(), dueAt, completed: false });
   } catch (error: any) {
     console.error('Todos POST error:', error);
     return NextResponse.json(
@@ -72,20 +74,38 @@ export async function DELETE(request: Request) {
 // PUT - Yapılacak güncelle
 export async function PUT(request: Request) {
   try {
-    const { id, content } = await request.json();
+    const { id, content, dueAt, completed } = await request.json();
 
-    if (!id || !content || !content.trim()) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'Yapılacak ID ve içerik gerekli' },
+        { error: 'Yapılacak ID gerekli' },
         { status: 400 }
       );
     }
 
-    await sql`
-      UPDATE todos 
-      SET content = ${content.trim()}
-      WHERE id = ${id}
-    `;
+    if (content !== undefined) {
+      await sql`
+        UPDATE todos 
+        SET content = ${content.trim()}
+        WHERE id = ${id}
+      `;
+    }
+
+    if (dueAt !== undefined) {
+      await sql`
+        UPDATE todos
+        SET due_at = ${dueAt}
+        WHERE id = ${id}
+      `;
+    }
+
+    if (completed !== undefined) {
+      await sql`
+        UPDATE todos
+        SET completed = ${completed}
+        WHERE id = ${id}
+      `;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
