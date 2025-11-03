@@ -127,3 +127,4 @@ Projeniz hazır! Şimdi chat modal'ını açıp AI ile konuşmaya başlayabilirs
 
 **İyi kullanımlar! 🚀**
 
+

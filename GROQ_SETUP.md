@@ -59,3 +59,4 @@ npm run dev
 - [Groq Resmi Dokümantasyon](https://console.groq.com/docs)
 - [Groq Discord Topluluğu](https://discord.gg/groq)
 
+

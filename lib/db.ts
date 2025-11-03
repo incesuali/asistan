@@ -66,6 +66,16 @@ export async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS plans_attachments (
+        id TEXT PRIMARY KEY,
+        plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_url TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
   } catch (error: any) {
     console.error('Database initialization error:', error);
     throw error;

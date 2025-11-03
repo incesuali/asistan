@@ -32,3 +32,4 @@ export function checkRateLimit(
   return true; // İstek kabul edildi
 }
 
+

@@ -67,6 +67,11 @@ export default function Home() {
   const [planTitleInput, setPlanTitleInput] = useState('');
   const [planContentInput, setPlanContentInput] = useState('');
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [planAttachments, setPlanAttachments] = useState<any[]>([]);
+  const refreshAttachments = async (planId: string) => {
+    const res = await fetch(`/api/plans/attachments?planId=${planId}`);
+    if (res.ok) setPlanAttachments(await res.json());
+  };
   
   // Ekran koruyucusu state'leri
   const [screenSaverActive, setScreenSaverActive] = useState(true); // İlk yüklemede açık
@@ -765,7 +770,7 @@ export default function Home() {
               <div className="text-xs text-gray-400 italic">Henüz plan yok</div>
             ) : (
               plans.map((p) => (
-                <div key={p.id} className="text-xs text-gray-700 leading-normal whitespace-pre-wrap group py-0.5 cursor-pointer" onClick={() => { setEditingPlan(p); setPlanTitleInput(p.title); setPlanContentInput(p.content); setPlansModalOpen(true); }}>
+                <div key={p.id} className="text-xs text-gray-700 leading-normal whitespace-pre-wrap group py-0.5 cursor-pointer" onClick={async () => { setEditingPlan(p); setPlanTitleInput(p.title); setPlanContentInput(p.content); setPlansModalOpen(true); await refreshAttachments(p.id); }}>
                   {p.title}
                 </div>
               ))
@@ -1333,6 +1338,31 @@ export default function Home() {
                 className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded hover:bg-gray-800 disabled:opacity-50"
               >Kaydet</button>
             </div>
+
+            {/* Ekler */}
+            {editingPlan && (
+              <div className="mt-6">
+                <h4 className="text-[11px] text-gray-600 mb-2">Belgeler</h4>
+                <div className="flex items-center gap-2 mb-2">
+                  <form onSubmit={async (e)=>{ e.preventDefault(); const input = (e.currentTarget.elements.namedItem('file') as HTMLInputElement); if (!input.files || !input.files[0]) return; const fd = new FormData(); fd.append('planId', editingPlan.id); fd.append('file', input.files[0]); const res = await fetch('/api/plans/upload', { method:'POST', body: fd }); if (res.ok){ const att = await res.json(); setPlanAttachments([att, ...planAttachments]); input.value=''; } }}>
+                    <input type="file" name="file" className="text-[11px]" />
+                    <button type="submit" className="ml-2 text-xs px-2 py-1 border rounded">Yükle</button>
+                  </form>
+                </div>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {planAttachments.length===0 ? (
+                    <div className="text-[11px] text-gray-400">Henüz belge yok</div>
+                  ) : (
+                    planAttachments.map(att => (
+                      <div key={att.id} className="flex items-center justify-between text-[11px]">
+                        <a href={att.fileUrl} target="_blank" className="text-blue-600 hover:underline truncate max-w-[80%]">{att.fileName}</a>
+                        <button onClick={async()=>{ await fetch(`/api/plans/attachments?id=${att.id}`, { method:'DELETE' }); setPlanAttachments(planAttachments.filter((x:any)=>x.id!==att.id)); }} className="text-red-500">Sil</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
