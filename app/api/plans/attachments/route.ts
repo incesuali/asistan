@@ -29,7 +29,8 @@ export async function DELETE(request: Request) {
     const row = result.rows?.[0];
     if (row && row.file_url) {
       try {
-        await del(row.file_url);
+        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        await del(row.file_url, { token });
       } catch {}
     }
     await sql`DELETE FROM plans_attachments WHERE id=${id}`;

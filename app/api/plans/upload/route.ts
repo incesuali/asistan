@@ -14,7 +14,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'planId ve file gerekli' }, { status: 400 });
     }
 
-    const blob = await put(`plans/${planId}/${Date.now()}-${file.name}`, file, { access: 'public' });
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const blob = await put(`plans/${planId}/${Date.now()}-${file.name}`, file, { access: 'public', token });
     const id = Date.now().toString();
     await sql`INSERT INTO plans_attachments (id, plan_id, file_name, file_url) VALUES (${id}, ${planId}, ${file.name}, ${blob.url})`;
 
