@@ -60,6 +60,13 @@ export default function Home() {
   const [editTodoInput, setEditTodoInput] = useState('');
   const [editReminderInput, setEditReminderInput] = useState('');
   const [editReminderDateTime, setEditReminderDateTime] = useState('');
+  // Planlar
+  interface Plan { id: string; title: string; content: string; createdAt: string; updatedAt: string; }
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
+  const [planTitleInput, setPlanTitleInput] = useState('');
+  const [planContentInput, setPlanContentInput] = useState('');
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   
   // Ekran koruyucusu state'leri
   const [screenSaverActive, setScreenSaverActive] = useState(true); // İlk yüklemede açık
@@ -228,6 +235,13 @@ export default function Home() {
             completed: r.completed ?? false,
             createdAt: r.created_at || r.createdAt,
           })));
+        }
+
+        // Plans
+        const plansRes = await fetch('/api/plans');
+        if (plansRes.ok) {
+          const plansData = await plansRes.json();
+          setPlans(plansData);
         }
       } catch (error) {
         console.error('Data load error:', error);
@@ -735,13 +749,27 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Sağ alt - Boş */}
+        {/* Sağ alt - Planlar */}
         <div className="p-4 flex flex-col overflow-hidden">
-          <h2 className="text-xs font-light text-gray-600 mb-3 uppercase tracking-wide flex-shrink-0">...</h2>
+          <div className="flex items-center justify-between mb-3 flex-shrink-0">
+            <h2 className="text-xs font-light text-gray-600 uppercase tracking-wide">Planlar</h2>
+            <button
+              onClick={() => { setEditingPlan(null); setPlanTitleInput(''); setPlanContentInput(''); setPlansModalOpen(true); }}
+              className="text-xs text-gray-600 hover:text-gray-900 transition-colors px-1"
+            >
+              Ekle
+            </button>
+          </div>
           <div className="flex-1 overflow-y-auto space-y-1 -mx-4 px-4">
-            <div className="text-xs text-gray-400 italic">
-              Henüz belirlenmedi
-            </div>
+            {plans.length === 0 ? (
+              <div className="text-xs text-gray-400 italic">Henüz plan yok</div>
+            ) : (
+              plans.map((p) => (
+                <div key={p.id} className="text-xs text-gray-700 leading-normal whitespace-pre-wrap group py-0.5 cursor-pointer" onClick={() => { setEditingPlan(p); setPlanTitleInput(p.title); setPlanContentInput(p.content); setPlansModalOpen(true); }}>
+                  {p.title}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -1236,6 +1264,75 @@ export default function Home() {
             >
               Tamam
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Planlar Modal */}
+      {plansModalOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setPlansModalOpen(false);
+              setEditingPlan(null);
+              setPlanTitleInput('');
+              setPlanContentInput('');
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">{editingPlan ? 'Planı Düzenle' : 'Yeni Plan'}</h3>
+            <input
+              value={planTitleInput}
+              onChange={(e)=>setPlanTitleInput(e.target.value)}
+              placeholder="Başlık"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent mb-3"
+            />
+            <textarea
+              value={planContentInput}
+              onChange={(e)=>setPlanContentInput(e.target.value)}
+              placeholder="Konu / İçerik"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent mb-4"
+              rows={18}
+            />
+            <div className="flex gap-2 justify-end">
+              {editingPlan && (
+                <button
+                  onClick={async ()=>{
+                    await fetch(`/api/plans?id=${editingPlan!.id}`, { method:'DELETE' });
+                    setPlans(plans.filter(pl=>pl.id!==editingPlan!.id));
+                    setPlansModalOpen(false);
+                    setEditingPlan(null);
+                  }}
+                  className="text-xs px-3 py-1.5 text-red-600 hover:text-red-800"
+                >Sil</button>
+              )}
+              <button
+                onClick={() => { setPlansModalOpen(false); setEditingPlan(null); setPlanTitleInput(''); setPlanContentInput(''); }}
+                className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-800"
+              >İptal</button>
+              <button
+                onClick={async ()=>{
+                  if (!planTitleInput.trim() || !planContentInput.trim()) return;
+                  if (editingPlan) {
+                    await fetch('/api/plans', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: editingPlan.id, title: planTitleInput.trim(), content: planContentInput.trim() }) });
+                    setPlans(plans.map(pl=>pl.id===editingPlan.id? { ...pl, title: planTitleInput.trim(), content: planContentInput.trim(), updatedAt: new Date().toISOString() } : pl));
+                    setEditingPlan(null);
+                    setPlansModalOpen(false);
+                  } else {
+                    const res = await fetch('/api/plans', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title: planTitleInput.trim(), content: planContentInput.trim() }) });
+                    if (res.ok) {
+                      const newPlan = await res.json();
+                      setPlans([newPlan, ...plans]);
+                      setPlanTitleInput(''); setPlanContentInput(''); setPlansModalOpen(false);
+                    }
+                  }
+                }}
+                disabled={!planTitleInput.trim() || !planContentInput.trim()}
+                className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded hover:bg-gray-800 disabled:opacity-50"
+              >Kaydet</button>
+            </div>
           </div>
         </div>
       )}
