@@ -69,58 +69,71 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // LocalStorage'dan verileri yükle
-    const savedNotes = localStorage.getItem('notes');
-    if (savedNotes) setNotes(JSON.parse(savedNotes));
-
-    const savedTodos = localStorage.getItem('todos');
-    if (savedTodos) setTodos(JSON.parse(savedTodos));
-
-    const savedReminders = localStorage.getItem('reminders');
-    if (savedReminders) {
+    // API'den verileri yükle
+    const loadData = async () => {
       try {
-        const parsed = JSON.parse(savedReminders);
-        // Reminder tipinde olduğundan emin ol (eski Note tipindeki verileri filtrele)
-        const validReminders: Reminder[] = parsed.filter((r: any) => 
-          r && typeof r === 'object' && r.id && r.content
-        ).map((r: any) => ({
-          ...r,
-          completed: r.completed ?? false,
-          reminderDateTime: r.reminderDateTime || r.createdAt, // Eski veriler için fallback
-        }));
-        setReminders(validReminders);
-      } catch (e) {
-        console.error('Reminders parse error:', e);
-        setReminders([]);
-      }
-    }
+        // Notes
+        const notesRes = await fetch('/api/notes');
+        if (notesRes.ok) {
+          const notesData = await notesRes.json();
+          setNotes(notesData.map((n: any) => ({
+            id: n.id,
+            content: n.content,
+            createdAt: n.created_at || n.createdAt,
+          })));
+        }
 
-    // Storage değişikliklerini dinle
-    const handleStorageChange = () => {
-      const savedNotes = localStorage.getItem('notes');
-      if (savedNotes) setNotes(JSON.parse(savedNotes));
-      
-      const savedTodos = localStorage.getItem('todos');
-      if (savedTodos) setTodos(JSON.parse(savedTodos));
-      
-      const savedReminders = localStorage.getItem('reminders');
-      if (savedReminders) setReminders(JSON.parse(savedReminders));
+        // Todos
+        const todosRes = await fetch('/api/todos');
+        if (todosRes.ok) {
+          const todosData = await todosRes.json();
+          setTodos(todosData.map((t: any) => ({
+            id: t.id,
+            content: t.content,
+            createdAt: t.created_at || t.createdAt,
+          })));
+        }
+
+        // Reminders
+        const remindersRes = await fetch('/api/reminders');
+        if (remindersRes.ok) {
+          const remindersData = await remindersRes.json();
+          setReminders(remindersData.map((r: any) => ({
+            id: r.id,
+            content: r.content,
+            reminderDateTime: r.reminderDateTime,
+            completed: r.completed ?? false,
+            createdAt: r.created_at || r.createdAt,
+          })));
+        }
+      } catch (error) {
+        console.error('Data load error:', error);
+      }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    loadData();
   }, []);
 
   // checkReminders fonksiyonunu component seviyesine çıkar (hem useEffect hem saveReminder'dan çağrılabilmesi için)
-  const checkReminders = () => {
+  const checkReminders = async () => {
     const now = new Date();
     
-    // Reminders'ı localStorage'dan direkt al (state closure sorununu çöz)
-    const savedReminders = localStorage.getItem('reminders');
-    const currentReminders: Reminder[] = savedReminders ? JSON.parse(savedReminders) : [];
-    
-    // Sadece tamamlanmamış (completed: false) ve zamanı gelmiş hatırlatmaları kontrol et
-    const activeReminders = currentReminders.filter(r => !r.completed && r.reminderDateTime);
+    // Reminders'ı API'den direkt al (state closure sorununu çöz)
+    try {
+      const remindersRes = await fetch('/api/reminders');
+      if (!remindersRes.ok) return;
+      
+      const savedReminders = await remindersRes.json();
+      const currentReminders: Reminder[] = savedReminders.map((r: any) => ({
+        id: r.id,
+        content: r.content,
+        reminderDateTime: r.reminderDateTime,
+        completed: r.completed ?? false,
+        createdAt: r.createdAt || r.created_at,
+      }));
+      
+      // Sadece tamamlanmamış (completed: false) ve zamanı gelmiş hatırlatmaları kontrol et
+      const activeReminders = currentReminders.filter(r => !r.completed && r.reminderDateTime);
     
     // Eğer zaten bir popup açıksa, yeni kontrol yapma (popup tamamlanana kadar bekler)
     if (activeReminderPopupRef.current) return;
@@ -149,6 +162,9 @@ export default function Home() {
       setActiveReminderPopup(reminder);
       activeReminderPopupRef.current = reminder;
       break; // İlk uygun hatırlatmayı göster ve dur
+    }
+    } catch (error) {
+      console.error('checkReminders error:', error);
     }
   };
 
@@ -199,55 +215,66 @@ export default function Home() {
     };
   }, [screenSaverActive]);
 
-  const deleteNote = (id: string, type: 'notes' | 'todos' | 'reminders') => {
-    const storageKey = type;
-    if (type === 'notes') {
-      const updated = notes.filter(n => n.id !== id);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-      setNotes(updated);
-    } else if (type === 'todos') {
-      const updated = todos.filter(n => n.id !== id);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-      setTodos(updated);
-    } else {
-      const updated = reminders.filter(n => n.id !== id);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-      setReminders(updated);
+  const deleteNote = async (id: string, type: 'notes' | 'todos' | 'reminders') => {
+    try {
+      const endpoint = type === 'notes' ? '/api/notes' : type === 'todos' ? '/api/todos' : '/api/reminders';
+      const res = await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+      
+      if (res.ok) {
+        if (type === 'notes') {
+          setNotes(notes.filter(n => n.id !== id));
+        } else if (type === 'todos') {
+          setTodos(todos.filter(n => n.id !== id));
+        } else {
+          setReminders(reminders.filter(n => n.id !== id));
+        }
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
     }
-    window.dispatchEvent(new Event('storage'));
   };
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!notesInput.trim()) return;
-    const newNote = {
-      id: Date.now().toString(),
-      content: notesInput.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...notes, newNote];
-    localStorage.setItem('notes', JSON.stringify(updated));
-    setNotes(updated);
-    setNotesInput('');
-    setNotesModalOpen(false);
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: notesInput.trim() }),
+      });
+      
+      if (res.ok) {
+        const newNote = await res.json();
+        setNotes([...notes, { ...newNote, createdAt: new Date().toISOString() }]);
+        setNotesInput('');
+        setNotesModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Save note error:', error);
+    }
   };
 
-  const saveTodo = () => {
+  const saveTodo = async () => {
     if (!todosInput.trim()) return;
-    const newTodo = {
-      id: Date.now().toString(),
-      content: todosInput.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...todos, newTodo];
-    localStorage.setItem('todos', JSON.stringify(updated));
-    setTodos(updated);
-    setTodosInput('');
-    setTodosModalOpen(false);
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: todosInput.trim() }),
+      });
+      
+      if (res.ok) {
+        const newTodo = await res.json();
+        setTodos([...todos, { ...newTodo, createdAt: new Date().toISOString() }]);
+        setTodosInput('');
+        setTodosModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Save todo error:', error);
+    }
   };
 
-  const saveReminder = () => {
+  const saveReminder = async () => {
     if (!remindersInput.trim() || !reminderDateTimeInput) return;
     
     // datetime-local input'u direkt Date objesine çevir
@@ -255,37 +282,51 @@ export default function Home() {
     const reminderDate = new Date(reminderDateTimeInput);
     const dateTimeISO = reminderDate.toISOString();
     
-    const newReminder: Reminder = {
-      id: Date.now().toString(),
-      content: remindersInput.trim(),
-      reminderDateTime: dateTimeISO,
-      completed: false,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...reminders, newReminder];
-    localStorage.setItem('reminders', JSON.stringify(updated));
-    setReminders(updated);
-    setRemindersInput('');
-    setReminderDateTimeInput('');
-    setRemindersModalOpen(false);
-    
-    // Yeni eklenen hatırlatma için hemen kontrol et (browser yenilemeden popup açılsın)
-    setTimeout(() => {
-      checkReminders();
-    }, 100); // State güncellemesinin tamamlanması için kısa bir gecikme
-    
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: remindersInput.trim(), reminderDateTime: dateTimeISO }),
+      });
+      
+      if (res.ok) {
+        const newReminder = await res.json();
+        setReminders([...reminders, { 
+          ...newReminder, 
+          createdAt: new Date().toISOString() 
+        }]);
+        setRemindersInput('');
+        setReminderDateTimeInput('');
+        setRemindersModalOpen(false);
+        
+        // Yeni eklenen hatırlatma için hemen kontrol et (browser yenilemeden popup açılsın)
+        setTimeout(() => {
+          checkReminders();
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Save reminder error:', error);
+    }
   };
 
-  const completeReminder = (id: string) => {
-    const updated = reminders.map(r => 
-      r.id === id ? { ...r, completed: true } : r
-    );
-    localStorage.setItem('reminders', JSON.stringify(updated));
-    setReminders(updated);
-    setActiveReminderPopup(null);
-    activeReminderPopupRef.current = null;
-    window.dispatchEvent(new Event('storage'));
+  const completeReminder = async (id: string) => {
+    try {
+      const res = await fetch('/api/reminders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, completed: true }),
+      });
+      
+      if (res.ok) {
+        setReminders(reminders.map(r => 
+          r.id === id ? { ...r, completed: true } : r
+        ));
+        setActiveReminderPopup(null);
+        activeReminderPopupRef.current = null;
+      }
+    } catch (error) {
+      console.error('Complete reminder error:', error);
+    }
   };
 
   // Düzenleme fonksiyonları
@@ -294,16 +335,25 @@ export default function Home() {
     setEditNoteInput(note.content);
   };
 
-  const saveEditNote = () => {
+  const saveEditNote = async () => {
     if (!editingNote || !editNoteInput.trim()) return;
-    const updated = notes.map(n => 
-      n.id === editingNote.id ? { ...n, content: editNoteInput.trim() } : n
-    );
-    localStorage.setItem('notes', JSON.stringify(updated));
-    setNotes(updated);
-    setEditingNote(null);
-    setEditNoteInput('');
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingNote.id, content: editNoteInput.trim() }),
+      });
+      
+      if (res.ok) {
+        setNotes(notes.map(n => 
+          n.id === editingNote.id ? { ...n, content: editNoteInput.trim() } : n
+        ));
+        setEditingNote(null);
+        setEditNoteInput('');
+      }
+    } catch (error) {
+      console.error('Edit note error:', error);
+    }
   };
 
   const startEditTodo = (todo: Note) => {
@@ -311,16 +361,25 @@ export default function Home() {
     setEditTodoInput(todo.content);
   };
 
-  const saveEditTodo = () => {
+  const saveEditTodo = async () => {
     if (!editingTodo || !editTodoInput.trim()) return;
-    const updated = todos.map(t => 
-      t.id === editingTodo.id ? { ...t, content: editTodoInput.trim() } : t
-    );
-    localStorage.setItem('todos', JSON.stringify(updated));
-    setTodos(updated);
-    setEditingTodo(null);
-    setEditTodoInput('');
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/todos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingTodo.id, content: editTodoInput.trim() }),
+      });
+      
+      if (res.ok) {
+        setTodos(todos.map(t => 
+          t.id === editingTodo.id ? { ...t, content: editTodoInput.trim() } : t
+        ));
+        setEditingTodo(null);
+        setEditTodoInput('');
+      }
+    } catch (error) {
+      console.error('Edit todo error:', error);
+    }
   };
 
   const startEditReminder = (reminder: Reminder) => {
@@ -336,27 +395,43 @@ export default function Home() {
     setEditReminderDateTime(`${year}-${month}-${day}T${hours}:${minutes}`);
   };
 
-  const saveEditReminder = () => {
+  const saveEditReminder = async () => {
     if (!editingReminder || !editReminderInput.trim() || !editReminderDateTime) return;
     
     const reminderDate = new Date(editReminderDateTime);
     const dateTimeISO = reminderDate.toISOString();
     
-    const updated = reminders.map(r => 
-      r.id === editingReminder.id ? { ...r, content: editReminderInput.trim(), reminderDateTime: dateTimeISO } : r
-    );
-    localStorage.setItem('reminders', JSON.stringify(updated));
-    setReminders(updated);
-    setEditingReminder(null);
-    setEditReminderInput('');
-    setEditReminderDateTime('');
-    
-    // Hatırlatma zamanı değişti, kontrol et
-    setTimeout(() => {
-      checkReminders();
-    }, 100);
-    
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const res = await fetch('/api/reminders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: editingReminder.id, 
+          content: editReminderInput.trim(), 
+          reminderDateTime: dateTimeISO 
+        }),
+      });
+      
+      if (res.ok) {
+        setReminders(reminders.map(r => 
+          r.id === editingReminder.id ? { 
+            ...r, 
+            content: editReminderInput.trim(), 
+            reminderDateTime: dateTimeISO 
+          } : r
+        ));
+        setEditingReminder(null);
+        setEditReminderInput('');
+        setEditReminderDateTime('');
+        
+        // Hatırlatma zamanı değişti, kontrol et
+        setTimeout(() => {
+          checkReminders();
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Edit reminder error:', error);
+    }
   };
 
   return (
