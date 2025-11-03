@@ -832,7 +832,7 @@ export default function Home() {
             {/* Günler */}
             <div className="grid grid-cols-7 gap-1 mb-3">
               {(() => {
-                const days: JSX.Element[] = [];
+                const days: any[] = [];
                 const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
                 const startIdx = (firstDay.getDay() + 6) % 7; // Pazartesi=0
                 const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
