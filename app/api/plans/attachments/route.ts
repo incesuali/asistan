@@ -29,7 +29,7 @@ export async function DELETE(request: Request) {
     const row = result.rows?.[0];
     if (row && row.file_url) {
       try {
-        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.asistan_READ_WRITE_TOKEN;
         await del(row.file_url, { token });
       } catch {}
     }
