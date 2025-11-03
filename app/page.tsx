@@ -41,6 +41,16 @@ export default function Home() {
   const [reminderDateTimeInput, setReminderDateTimeInput] = useState('');
   const [activeReminderPopup, setActiveReminderPopup] = useState<Reminder | null>(null);
   const activeReminderPopupRef = useRef<Reminder | null>(null);
+
+  // Takvim modal state'leri
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const [calendarSelectedDay, setCalendarSelectedDay] = useState<Date | null>(null);
+  const [calendarTitle, setCalendarTitle] = useState('');
+  const [calendarTime, setCalendarTime] = useState(''); // HH:mm
   
   // Düzenleme state'leri
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -587,7 +597,7 @@ export default function Home() {
       <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Üst Bar - Siyah, tarih sağda */}
       <div className="bg-black text-white px-4 py-4 flex justify-end items-center flex-shrink-0">
-        <span className="text-xs font-light">{currentDate}</span>
+        <button onClick={() => setCalendarOpen(true)} className="text-xs font-light hover:underline">{currentDate}</button>
       </div>
       
       <div className="grid grid-cols-2 grid-rows-2 flex-1 min-h-0 overflow-hidden">
@@ -784,6 +794,119 @@ export default function Home() {
         </div>
       )}
 
+      {/* Takvim Modal */}
+      {calendarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setCalendarOpen(false);
+              setCalendarSelectedDay(null);
+              setCalendarTitle('');
+              setCalendarTime('');
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <button className="text-xs px-2 py-1 border rounded" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear() - 1, calendarMonth.getMonth(), 1))}>{'<<'}</button>
+                <button className="text-xs px-2 py-1 border rounded" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>{'<'}</button>
+              </div>
+              <div className="text-sm font-semibold text-gray-800">
+                {calendarMonth.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="text-xs px-2 py-1 border rounded" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>{'>'}</button>
+                <button className="text-xs px-2 py-1 border rounded" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear() + 1, calendarMonth.getMonth(), 1))}>{'>>'}</button>
+              </div>
+            </div>
+
+            {/* Gün başlıkları */}
+            <div className="grid grid-cols-7 gap-1 text-[11px] text-gray-500 mb-1">
+              {['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map(d => (
+                <div key={d} className="text-center">{d}</div>
+              ))}
+            </div>
+
+            {/* Günler */}
+            <div className="grid grid-cols-7 gap-1 mb-3">
+              {(() => {
+                const days: JSX.Element[] = [];
+                const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+                const startIdx = (firstDay.getDay() + 6) % 7; // Pazartesi=0
+                const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+
+                for (let i = 0; i < startIdx; i++) {
+                  days.push(<div key={'e'+i} className="h-16 border rounded bg-gray-50" />);
+                }
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const dateObj = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), d);
+                  const key = dateObj.toISOString().slice(0,10);
+                  const dayReminders = reminders.filter(r => {
+                    const ds = new Date(r.reminderDateTime);
+                    return ds.getFullYear()===dateObj.getFullYear() && ds.getMonth()===dateObj.getMonth() && ds.getDate()===dateObj.getDate();
+                  });
+                  days.push(
+                    <button key={key} onClick={() => setCalendarSelectedDay(dateObj)} className={`h-16 border rounded text-left p-1 hover:bg-gray-50 ${calendarSelectedDay && dateObj.toDateString()===calendarSelectedDay.toDateString() ? 'ring-2 ring-gray-400' : ''}`}>
+                      <div className="text-[11px] text-gray-600 mb-1">{d}</div>
+                      <div className="space-y-0.5 overflow-hidden">
+                        {dayReminders.slice(0,2).map(ev => (
+                          <div key={ev.id} className="text-[10px] truncate text-gray-700">• {ev.content}</div>
+                        ))}
+                        {dayReminders.length>2 && <div className="text-[10px] text-gray-400">+{dayReminders.length-2} daha</div>}
+                      </div>
+                    </button>
+                  );
+                }
+                return days;
+              })()}
+            </div>
+
+            {/* Seçili gün formu */}
+            <div className="border-t pt-3">
+              <div className="text-[11px] text-gray-600 mb-2">Seçili gün: {calendarSelectedDay ? calendarSelectedDay.toLocaleDateString('tr-TR') : '—'}</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                <input
+                  value={calendarTitle}
+                  onChange={(e)=>setCalendarTitle(e.target.value)}
+                  placeholder="Başlık/Not"
+                  className="border border-gray-300 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                />
+                <input
+                  type="time"
+                  value={calendarTime}
+                  onChange={(e)=>setCalendarTime(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                />
+                <button
+                  onClick={async ()=>{
+                    if (!calendarSelectedDay || !calendarTitle.trim() || !calendarTime) return;
+                    const [hh,mm] = calendarTime.split(':');
+                    const dt = new Date(calendarSelectedDay);
+                    dt.setHours(Number(hh)||0, Number(mm)||0, 0, 0);
+                    const iso = dt.toISOString();
+                    try {
+                      const res = await fetch('/api/reminders', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: calendarTitle.trim(), reminderDateTime: iso }) });
+                      if (res.ok) {
+                        const newR = await res.json();
+                        setReminders([...reminders, newR]);
+                        setCalendarTitle(''); setCalendarTime('');
+                        setTimeout(()=>checkReminders(),200);
+                      }
+                    } catch {}
+                  }}
+                  disabled={!calendarSelectedDay || !calendarTitle.trim() || !calendarTime}
+                  className="text-xs px-3 py-2 bg-gray-900 text-white rounded disabled:opacity-50"
+                >Kaydet</button>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="text-xs px-3 py-1.5 text-gray-600" onClick={()=>{setCalendarOpen(false); setCalendarSelectedDay(null); setCalendarTitle(''); setCalendarTime('');}}>Kapat</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Yapılacaklar Modal */}
       {todosModalOpen && (
         <div 
