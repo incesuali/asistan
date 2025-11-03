@@ -1,13 +1,31 @@
-import { sql as vercelSql } from '@vercel/postgres';
+import { Pool } from 'pg';
 
-// @vercel/postgres'in sql fonksiyonunu direkt kullan
-// createClient() otomatik olarak pooled connection string kullanır
-export const sql = vercelSql;
+// Connection string: Prisma Postgres (DATABASE_URL veya POSTGRES_URL)
+const connectionString =
+  process.env.POSTGRES_URL || process.env.DATABASE_URL || '';
+
+if (!connectionString) {
+  // Bu durum API route'larında yakalanacak
+  console.error('Database connection string is missing');
+}
+
+// Serverless için havuz (pool)
+const pool = new Pool({ connectionString, max: 5, ssl: { rejectUnauthorized: false } });
+
+// Basit sql helper (tagged template yerine parametreli query)
+export async function sql(strings: TemplateStringsArray, ...values: any[]) {
+  let text = '';
+  for (let i = 0; i < strings.length; i++) {
+    text += strings[i];
+    if (i < values.length) text += `$${i + 1}`;
+  }
+  const result = await pool.query(text, values);
+  return result;
+}
 
 // Veritabanı tablolarını oluştur
 export async function initDatabase() {
   try {
-    // Notes tablosu
     await sql`
       CREATE TABLE IF NOT EXISTS notes (
         id TEXT PRIMARY KEY,
@@ -16,7 +34,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Todos tablosu
     await sql`
       CREATE TABLE IF NOT EXISTS todos (
         id TEXT PRIMARY KEY,
@@ -25,7 +42,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Reminders tablosu
     await sql`
       CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY,
@@ -37,7 +53,7 @@ export async function initDatabase() {
     `;
   } catch (error: any) {
     console.error('Database initialization error:', error);
-    throw error; // Hata fırlat ki API route'ları yakalasın
+    throw error;
   }
 }
 
