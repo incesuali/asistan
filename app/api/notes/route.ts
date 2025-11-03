@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
-import { initDatabase } from '@/lib/db';
+import { sql, initDatabase } from '@/lib/db';
 
 // GET - Tüm notları getir
 export async function GET() {
   try {
     await initDatabase();
     const result = await sql`SELECT * FROM notes ORDER BY created_at DESC`;
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result.rows || []);
   } catch (error: any) {
     console.error('Notes GET error:', error);
     return NextResponse.json(

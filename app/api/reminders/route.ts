@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
-import { initDatabase } from '@/lib/db';
+import { sql, initDatabase } from '@/lib/db';
 
 // GET - Tüm hatırlatmaları getir
 export async function GET() {

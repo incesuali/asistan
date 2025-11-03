@@ -1,14 +1,12 @@
-import { sql } from '@vercel/postgres';
+import { sql as vercelSql } from '@vercel/postgres';
+
+// @vercel/postgres'in sql fonksiyonunu direkt kullan
+// createClient() otomatik olarak pooled connection string kullanır
+export const sql = vercelSql;
 
 // Veritabanı tablolarını oluştur
 export async function initDatabase() {
   try {
-    // Environment variable kontrolü
-    if (!process.env.POSTGRES_URL && !process.env.DATABASE_URL) {
-      console.error('POSTGRES_URL or DATABASE_URL environment variable is missing');
-      throw new Error('Database connection string not found');
-    }
-
     // Notes tablosu
     await sql`
       CREATE TABLE IF NOT EXISTS notes (
