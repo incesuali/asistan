@@ -619,9 +619,9 @@ export default function Home() {
         <button onClick={() => setCalendarOpen(true)} className="text-xs font-light hover:underline">{currentDate}</button>
       </div>
       
-      <div className="grid grid-cols-2 grid-rows-2 flex-1 min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 flex-1 min-h-0 overflow-hidden">
         {/* Sol üst - Notlar */}
-        <div className="border-r border-b border-gray-200 p-4 flex flex-col overflow-hidden">
+        <div className="md:border-r border-b border-gray-200 p-4 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <h2 className="text-xs font-light text-gray-600 uppercase tracking-wide">Notlar</h2>
             <button
@@ -703,7 +703,7 @@ export default function Home() {
         </div>
 
         {/* Sol alt - Hatırlatmalar */}
-        <div className="border-r border-gray-200 p-4 flex flex-col overflow-hidden">
+        <div className="md:border-r border-gray-200 p-4 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <h2 className="text-xs font-light text-gray-600 uppercase tracking-wide">Hatırlatmalar</h2>
             <button
@@ -772,7 +772,7 @@ export default function Home() {
               plans.map((p) => (
                 <div key={p.id} className="text-xs text-gray-700 leading-normal whitespace-pre-wrap group py-0.5 cursor-pointer" onClick={async () => { setEditingPlan(p); setPlanTitleInput(p.title); setPlanContentInput(p.content); setPlansModalOpen(true); await refreshAttachments(p.id); }}>
                   {p.title}
-                </div>
+            </div>
               ))
             )}
           </div>
@@ -1394,7 +1394,7 @@ export default function Home() {
       
       {/* Chat Modal - Ekranın ortasında */}
       <ChatModal />
-      </div>
+    </div>
     </>
   );
 }
