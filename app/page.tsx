@@ -1344,7 +1344,32 @@ export default function Home() {
               <div className="mt-6">
                 <h4 className="text-[11px] text-gray-600 mb-2">Belgeler</h4>
                 <div className="flex items-center gap-2 mb-2">
-                  <form onSubmit={async (e)=>{ e.preventDefault(); const input = (e.currentTarget.elements.namedItem('file') as HTMLInputElement); if (!input.files || !input.files[0]) return; const fd = new FormData(); fd.append('planId', editingPlan.id); fd.append('file', input.files[0]); const res = await fetch('/api/plans/upload', { method:'POST', body: fd }); if (res.ok){ const att = await res.json(); setPlanAttachments([att, ...planAttachments]); input.value=''; } }}>
+                  <form onSubmit={async (e)=>{ 
+                    e.preventDefault(); 
+                    const formEl = e.currentTarget as HTMLFormElement;
+                    const submitBtn = formEl.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                    const input = (formEl.elements.namedItem('file') as HTMLInputElement);
+                    if (!input.files || !input.files[0]) { alert('Lütfen bir dosya seçin'); return; }
+                    try {
+                      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Yükleniyor...'; }
+                      const fd = new FormData();
+                      fd.append('planId', editingPlan.id);
+                      fd.append('file', input.files[0]);
+                      const res = await fetch('/api/plans/upload', { method:'POST', body: fd });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.error || `Yükleme başarısız (HTTP ${res.status})`);
+                      }
+                      const att = await res.json();
+                      // Sunucudan kesin durumu çek (UI ile DB senkron)
+                      await refreshAttachments(editingPlan.id);
+                      input.value='';
+                    } catch (err:any) {
+                      alert(err.message || 'Yükleme başarısız');
+                    } finally {
+                      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Yükle'; }
+                    }
+                  }}>
                     <input type="file" name="file" className="text-[11px]" />
                     <button type="submit" className="ml-2 text-xs px-2 py-1 border rounded">Yükle</button>
                   </form>
@@ -1355,7 +1380,7 @@ export default function Home() {
                   ) : (
                     planAttachments.map(att => (
                       <div key={att.id} className="flex items-center justify-between text-[11px]">
-                        <a href={att.fileUrl} target="_blank" className="text-blue-600 hover:underline truncate max-w-[80%]">{att.fileName}</a>
+                        <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-[80%]">{att.fileName}</a>
                         <button onClick={async()=>{ await fetch(`/api/plans/attachments?id=${att.id}`, { method:'DELETE' }); setPlanAttachments(planAttachments.filter((x:any)=>x.id!==att.id)); }} className="text-red-500">Sil</button>
                       </div>
                     ))
