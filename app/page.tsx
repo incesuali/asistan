@@ -69,9 +69,72 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // API'den verileri yükle
+    // API'den verileri yükle ve LocalStorage'dan migrate et
     const loadData = async () => {
       try {
+        // Önce LocalStorage'dan verileri al
+        const localNotes = localStorage.getItem('notes');
+        const localTodos = localStorage.getItem('todos');
+        const localReminders = localStorage.getItem('reminders');
+
+        let parsedNotes: Note[] = [];
+        let parsedTodos: Note[] = [];
+        let parsedReminders: Reminder[] = [];
+
+        if (localNotes) {
+          try {
+            parsedNotes = JSON.parse(localNotes);
+          } catch (e) {
+            console.error('Notes parse error:', e);
+          }
+        }
+
+        if (localTodos) {
+          try {
+            parsedTodos = JSON.parse(localTodos);
+          } catch (e) {
+            console.error('Todos parse error:', e);
+          }
+        }
+
+        if (localReminders) {
+          try {
+            const parsed = JSON.parse(localReminders);
+            parsedReminders = parsed.filter((r: any) => 
+              r && typeof r === 'object' && r.id && r.content
+            ).map((r: any) => ({
+              ...r,
+              completed: r.completed ?? false,
+              reminderDateTime: r.reminderDateTime || r.createdAt,
+            }));
+          } catch (e) {
+            console.error('Reminders parse error:', e);
+          }
+        }
+
+        // Eğer LocalStorage'da veri varsa, veritabanına taşı
+        if (parsedNotes.length > 0 || parsedTodos.length > 0 || parsedReminders.length > 0) {
+          try {
+            await fetch('/api/migrate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                notes: parsedNotes,
+                todos: parsedTodos,
+                reminders: parsedReminders,
+              }),
+            });
+            
+            // Migration sonrası LocalStorage'ı temizle
+            if (parsedNotes.length > 0) localStorage.removeItem('notes');
+            if (parsedTodos.length > 0) localStorage.removeItem('todos');
+            if (parsedReminders.length > 0) localStorage.removeItem('reminders');
+          } catch (error) {
+            console.error('Migration error:', error);
+          }
+        }
+
+        // API'den verileri yükle
         // Notes
         const notesRes = await fetch('/api/notes');
         if (notesRes.ok) {
