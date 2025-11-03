@@ -3,6 +3,12 @@ import { sql } from '@vercel/postgres';
 // Veritabanı tablolarını oluştur
 export async function initDatabase() {
   try {
+    // Environment variable kontrolü
+    if (!process.env.POSTGRES_URL && !process.env.DATABASE_URL) {
+      console.error('POSTGRES_URL or DATABASE_URL environment variable is missing');
+      throw new Error('Database connection string not found');
+    }
+
     // Notes tablosu
     await sql`
       CREATE TABLE IF NOT EXISTS notes (
@@ -31,8 +37,9 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Database initialization error:', error);
+    throw error; // Hata fırlat ki API route'ları yakalasın
   }
 }
 

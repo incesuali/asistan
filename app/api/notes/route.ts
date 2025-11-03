@@ -21,7 +21,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await initDatabase();
-    const { content } = await request.json();
+    const body = await request.json();
+    const { content } = body;
     
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Notes POST error:', error);
     return NextResponse.json(
-      { error: 'Not eklenemedi' },
+      { error: `Not eklenemedi: ${error.message || 'Veritabanı hatası'}` },
       { status: 500 }
     );
   }

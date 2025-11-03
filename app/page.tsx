@@ -311,9 +311,14 @@ export default function Home() {
         setNotes([...notes, { ...newNote, createdAt: new Date().toISOString() }]);
         setNotesInput('');
         setNotesModalOpen(false);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Save note failed:', res.status, errorData);
+        alert(`Not kaydedilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save note error:', error);
+      alert(`Not kaydedilemedi: ${error.message || 'Bağlantı hatası'}`);
     }
   };
 
@@ -331,9 +336,14 @@ export default function Home() {
         setTodos([...todos, { ...newTodo, createdAt: new Date().toISOString() }]);
         setTodosInput('');
         setTodosModalOpen(false);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Save todo failed:', res.status, errorData);
+        alert(`Yapılacak kaydedilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save todo error:', error);
+      alert(`Yapılacak kaydedilemedi: ${error.message || 'Bağlantı hatası'}`);
     }
   };
 
@@ -366,9 +376,14 @@ export default function Home() {
         setTimeout(() => {
           checkReminders();
         }, 100);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Save reminder failed:', res.status, errorData);
+        alert(`Hatırlatma kaydedilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save reminder error:', error);
+      alert(`Hatırlatma kaydedilemedi: ${error.message || 'Bağlantı hatası'}`);
     }
   };
 
