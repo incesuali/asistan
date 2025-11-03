@@ -700,6 +700,7 @@ export default function Home() {
             ) : (
               reminders
                 .filter(r => r.reminderDateTime)
+                .sort((a, b) => new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime())
                 .map((reminder) => (
                 <div key={reminder.id} className={`text-xs leading-normal whitespace-pre-wrap group py-0.5 ${reminder.completed ? 'text-red-600' : 'text-green-600'}`}>
                   {reminder.content}
