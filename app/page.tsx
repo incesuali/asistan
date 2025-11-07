@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import ChatModal from './components/ChatModal';
 import ScreenSaver from './components/ScreenSaver';
 
@@ -614,8 +615,14 @@ export default function Home() {
       )}
       
       <div className="h-screen bg-white flex flex-col overflow-hidden">
-      {/* Üst Bar - Siyah, tarih sağda */}
-      <div className="bg-black text-white px-4 py-4 flex justify-end items-center flex-shrink-0">
+      {/* Üst Bar - Siyah, solda İş Akışı, sağda tarih */}
+      <div className="bg-black text-white px-4 py-4 flex justify-between items-center flex-shrink-0">
+        <Link 
+          href="/isakisi" 
+          className="text-xs font-light hover:underline"
+        >
+          İş Akışı
+        </Link>
         <button onClick={() => setCalendarOpen(true)} className="text-xs font-light hover:underline">{currentDate}</button>
       </div>
       
