@@ -16,11 +16,22 @@ import ReactFlow, {
   NodeTypes,
   Handle,
   Position,
+  NodeResizer,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 // Özel Node Tipleri
-const CustomNode = ({ data, selected }: { data: { label: string; shape: string }; selected: boolean }) => {
+const CustomNode = ({ 
+  data, 
+  selected,
+  width,
+  height,
+}: { 
+  data: { label: string; shape: string }; 
+  selected: boolean;
+  width?: number;
+  height?: number;
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(data.label);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -45,19 +56,34 @@ const CustomNode = ({ data, selected }: { data: { label: string; shape: string }
     }
   };
 
+  // Circle için width ve height her zaman eşit olmalı
+  const baseWidth = width || (data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 200 : 150);
+  const baseHeight = height || (data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 40 : 80);
+  
+  // Circle için boyutları eşitle
+  const nodeWidth = data.shape === 'circle' ? (width || height || 120) : baseWidth;
+  const nodeHeight = data.shape === 'circle' ? nodeWidth : baseHeight;
+
   const getNodeStyle = () => {
-    const baseStyle = 'min-w-[120px] min-h-[60px] flex items-center justify-center text-xs p-2 text-center border-2 transition-all';
+    const baseStyle = 'flex items-center justify-center text-xs p-2 text-center border-2 transition-all relative';
     const selectedStyle = selected ? 'ring-2 ring-blue-500' : '';
+    
+    const style: React.CSSProperties = {
+      width: data.shape === 'circle' ? nodeWidth : nodeWidth,
+      height: data.shape === 'circle' ? nodeWidth : nodeHeight,
+      minWidth: data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100,
+      minHeight: data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50,
+    };
     
     switch (data.shape) {
       case 'rectangle':
         return `${baseStyle} ${selectedStyle} rounded-none bg-white border-gray-800`;
       case 'thin-rectangle':
-        return `${baseStyle} ${selectedStyle} rounded-none bg-white border-gray-800 min-h-[40px]`;
+        return `${baseStyle} ${selectedStyle} rounded-none bg-white border-gray-800`;
       case 'circle':
-        return `${baseStyle} ${selectedStyle} rounded-full bg-white border-gray-800 w-[120px] h-[120px]`;
+        return `${baseStyle} ${selectedStyle} rounded-full bg-white border-gray-800`;
       case 'diamond':
-        return `${baseStyle} ${selectedStyle} bg-white border-gray-800 transform rotate-45 min-w-[100px] min-h-[100px]`;
+        return `${baseStyle} ${selectedStyle} bg-white border-gray-800 transform rotate-45`;
       case 'rounded-rectangle':
         return `${baseStyle} ${selectedStyle} rounded-lg bg-white border-gray-800`;
       default:
@@ -73,7 +99,33 @@ const CustomNode = ({ data, selected }: { data: { label: string; shape: string }
   };
 
   return (
-    <div className={getNodeStyle()} onDoubleClick={handleDoubleClick}>
+    <div 
+      className={getNodeStyle()} 
+      onDoubleClick={handleDoubleClick}
+      style={{
+        width: data.shape === 'circle' ? nodeWidth : nodeWidth,
+        height: data.shape === 'circle' ? nodeWidth : nodeHeight,
+        minWidth: data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100,
+        minHeight: data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50,
+      }}
+    >
+      {selected && (
+        <NodeResizer
+          color="#3b82f6"
+          isVisible={selected}
+          minWidth={data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100}
+          minHeight={data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50}
+          keepAspectRatio={data.shape === 'circle'}
+          handleStyle={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '2px',
+            backgroundColor: '#3b82f6',
+            border: '2px solid white',
+          }}
+        />
+      )}
+      
       <Handle type="target" position={Position.Top} className="!bg-gray-800" />
       <Handle type="source" position={Position.Bottom} className="!bg-gray-800" />
       <Handle type="target" position={Position.Left} className="!bg-gray-800" />
@@ -87,7 +139,10 @@ const CustomNode = ({ data, selected }: { data: { label: string; shape: string }
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className="w-full h-full text-xs border-none outline-none resize-none text-center bg-transparent"
-          style={{ minHeight: '40px' }}
+          style={{ 
+            minHeight: '40px',
+            transform: data.shape === 'diamond' ? 'rotate(-45deg)' : 'none',
+          }}
         />
       ) : (
         <div className={getTextStyle()}>{text || 'Çift tıklayarak düzenle'}</div>
@@ -115,6 +170,16 @@ function FlowCanvas() {
   );
 
   const addNode = (shape: string) => {
+    const defaultSize = {
+      rectangle: { width: 150, height: 80 },
+      'thin-rectangle': { width: 200, height: 40 },
+      circle: { width: 120, height: 120 },
+      diamond: { width: 120, height: 120 },
+      'rounded-rectangle': { width: 150, height: 80 },
+    };
+    
+    const size = defaultSize[shape as keyof typeof defaultSize] || { width: 150, height: 80 };
+    
     const newNode: Node = {
       id: `node-${nodeIdRef.current++}`,
       type: 'custom',
@@ -126,6 +191,8 @@ function FlowCanvas() {
         label: 'Yeni öğe',
         shape: shape,
       },
+      width: size.width,
+      height: size.height,
     };
     setNodes((nds) => [...nds, newNode]);
   };
@@ -197,7 +264,7 @@ function FlowCanvas() {
         </div>
 
         <div className="ml-auto text-[10px] text-gray-500">
-          💡 Çift tıklayarak metin düzenleyin • Sürükle-bırak ile taşıyın • Bağlantılar için handle'ları sürükleyin
+          💡 Çift tıklayarak metin düzenleyin • Sürükle-bırak ile taşıyın • Seçili şeklin köşelerinden boyutlandırın • Bağlantılar için handle'ları sürükleyin
         </div>
       </div>
 
