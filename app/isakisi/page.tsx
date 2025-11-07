@@ -56,24 +56,22 @@ const CustomNode = ({
     }
   };
 
-  // Circle için width ve height her zaman eşit olmalı
-  const baseWidth = width || (data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 200 : 150);
-  const baseHeight = height || (data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 40 : 80);
+  // Default boyutlar
+  const defaultWidth = data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 200 : 150;
+  const defaultHeight = data.shape === 'circle' || data.shape === 'diamond' ? 120 : data.shape === 'thin-rectangle' ? 40 : 80;
   
-  // Circle için boyutları eşitle
-  const nodeWidth = data.shape === 'circle' ? (width || height || 120) : baseWidth;
-  const nodeHeight = data.shape === 'circle' ? nodeWidth : baseHeight;
+  // React Flow'dan gelen width ve height değerlerini kullan
+  // Eğer yoksa default değerleri kullan
+  const nodeWidth = width || defaultWidth;
+  const nodeHeight = height || defaultHeight;
+  
+  // Circle için width ve height eşit olmalı (daha büyük olanı kullan)
+  const finalWidth = data.shape === 'circle' ? Math.max(nodeWidth, nodeHeight) : nodeWidth;
+  const finalHeight = data.shape === 'circle' ? finalWidth : nodeHeight;
 
   const getNodeStyle = () => {
-    const baseStyle = 'flex items-center justify-center text-xs p-2 text-center border-2 transition-all relative';
+    const baseStyle = 'flex items-center justify-center text-xs p-2 text-center border-2 transition-all relative w-full h-full';
     const selectedStyle = selected ? 'ring-2 ring-blue-500' : '';
-    
-    const style: React.CSSProperties = {
-      width: data.shape === 'circle' ? nodeWidth : nodeWidth,
-      height: data.shape === 'circle' ? nodeWidth : nodeHeight,
-      minWidth: data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100,
-      minHeight: data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50,
-    };
     
     switch (data.shape) {
       case 'rectangle':
@@ -98,56 +96,58 @@ const CustomNode = ({
     return 'whitespace-pre-wrap';
   };
 
+  const minWidth = data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100;
+  const minHeight = data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50;
+
   return (
-    <div 
-      className={getNodeStyle()} 
-      onDoubleClick={handleDoubleClick}
-      style={{
-        width: data.shape === 'circle' ? nodeWidth : nodeWidth,
-        height: data.shape === 'circle' ? nodeWidth : nodeHeight,
-        minWidth: data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100,
-        minHeight: data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50,
-      }}
-    >
-      {selected && (
-        <NodeResizer
-          color="#3b82f6"
-          isVisible={selected}
-          minWidth={data.shape === 'thin-rectangle' ? 120 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 100}
-          minHeight={data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50}
-          keepAspectRatio={data.shape === 'circle'}
-          handleStyle={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '2px',
-            backgroundColor: '#3b82f6',
-            border: '2px solid white',
-          }}
-        />
-      )}
-      
-      <Handle type="target" position={Position.Top} className="!bg-gray-800" />
-      <Handle type="source" position={Position.Bottom} className="!bg-gray-800" />
-      <Handle type="target" position={Position.Left} className="!bg-gray-800" />
-      <Handle type="source" position={Position.Right} className="!bg-gray-800" />
-      
-      {isEditing ? (
-        <textarea
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className="w-full h-full text-xs border-none outline-none resize-none text-center bg-transparent"
-          style={{ 
-            minHeight: '40px',
-            transform: data.shape === 'diamond' ? 'rotate(-45deg)' : 'none',
-          }}
-        />
-      ) : (
-        <div className={getTextStyle()}>{text || 'Çift tıklayarak düzenle'}</div>
-      )}
-    </div>
+    <>
+      <NodeResizer
+        color="#3b82f6"
+        isVisible={selected}
+        minWidth={minWidth}
+        minHeight={minHeight}
+        keepAspectRatio={data.shape === 'circle'}
+        handleStyle={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '2px',
+          backgroundColor: '#3b82f6',
+          border: '2px solid white',
+        }}
+      />
+      <div 
+        className={getNodeStyle()} 
+        onDoubleClick={handleDoubleClick}
+        style={{
+          width: width || finalWidth,
+          height: height || finalHeight,
+          minWidth,
+          minHeight,
+        }}
+      >
+        <Handle type="target" position={Position.Top} className="!bg-gray-800" />
+        <Handle type="source" position={Position.Bottom} className="!bg-gray-800" />
+        <Handle type="target" position={Position.Left} className="!bg-gray-800" />
+        <Handle type="source" position={Position.Right} className="!bg-gray-800" />
+        
+        {isEditing ? (
+          <textarea
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-full h-full text-xs border-none outline-none resize-none text-center bg-transparent"
+            style={{ 
+              minHeight: '40px',
+              transform: data.shape === 'diamond' ? 'rotate(-45deg)' : 'none',
+            }}
+          />
+        ) : (
+          <div className={getTextStyle()}>{text || 'Çift tıklayarak düzenle'}</div>
+        )}
+      </div>
+    </>
   );
 };
 
