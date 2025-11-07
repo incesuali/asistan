@@ -70,7 +70,8 @@ const CustomNode = ({
   const finalHeight = data.shape === 'circle' ? finalWidth : nodeHeight;
 
   const getNodeStyle = () => {
-    const baseStyle = 'flex items-center justify-center text-xs p-2 text-center border-2 transition-all relative w-full h-full';
+    // w-full h-full kullanarak React Flow'un node wrapper'ının boyutunu kullan
+    const baseStyle = 'flex items-center justify-center text-xs p-2 text-center border-2 transition-all relative w-full h-full box-border';
     const selectedStyle = selected ? 'ring-2 ring-blue-500' : '';
     
     switch (data.shape) {
@@ -100,7 +101,14 @@ const CustomNode = ({
   const minHeight = data.shape === 'thin-rectangle' ? 30 : data.shape === 'circle' || data.shape === 'diamond' ? 80 : 50;
 
   return (
-    <>
+    <div 
+      className={getNodeStyle()} 
+      onDoubleClick={handleDoubleClick}
+      style={{
+        minWidth,
+        minHeight,
+      }}
+    >
       <NodeResizer
         color="#3b82f6"
         isVisible={selected}
@@ -115,16 +123,6 @@ const CustomNode = ({
           border: '2px solid white',
         }}
       />
-      <div 
-        className={getNodeStyle()} 
-        onDoubleClick={handleDoubleClick}
-        style={{
-          width: width || finalWidth,
-          height: height || finalHeight,
-          minWidth,
-          minHeight,
-        }}
-      >
         <Handle type="target" position={Position.Top} className="!bg-gray-800" />
         <Handle type="source" position={Position.Bottom} className="!bg-gray-800" />
         <Handle type="target" position={Position.Left} className="!bg-gray-800" />
@@ -146,8 +144,7 @@ const CustomNode = ({
         ) : (
           <div className={getTextStyle()}>{text || 'Çift tıklayarak düzenle'}</div>
         )}
-      </div>
-    </>
+    </div>
   );
 };
 
